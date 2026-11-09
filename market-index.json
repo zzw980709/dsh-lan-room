@@ -1,0 +1,71 @@
+{
+  "title": {
+    "en": "zhengzhiwei's DSH plugins",
+    "zh-CN": "zhengzhiwei 的 DSH 插件"
+  },
+  "description": {
+    "en": "Installable DeepSeek Harness plugins.",
+    "zh-CN": "可安装的 DeepSeek Harness 插件。"
+  },
+  "metadata": {
+    "categories": {
+      "collaboration": {
+        "title": {
+          "en": "Collaboration",
+          "zh-CN": "协作"
+        }
+      }
+    },
+    "labels": {},
+    "sortKeys": {}
+  },
+  "plugins": [
+    {
+      "name": "dsh-lan-room",
+      "title": {
+        "en": "LAN Rooms",
+        "zh-CN": "局域网联机"
+      },
+      "description": {
+        "en": "Host a room on your LAN, let other machines join with a one-time invite code, and have their agents ask each other questions.",
+        "zh-CN": "在局域网里开一个房间，别人用一次性邀请码加入，各自的 agent 可以互相提问。"
+      },
+      "icon": "./icon.svg",
+      "author": "zhengzhiwei",
+      "homepage": "https://github.com/zzw980709/dsh-lan-room#readme",
+      "repository": {
+        "url": "https://github.com/zzw980709/dsh-lan-room"
+      },
+      "metadata": {
+        "category": "collaboration",
+        "keywords": [
+          "dsh",
+          "deepseek-harness",
+          "dsh-plugin",
+          "lan",
+          "agent",
+          "multi-agent",
+          "local-network",
+          "room"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.1.0",
+          "publishTimestamp": 1794212905000,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/zzw980709/dsh-lan-room",
+            "commit": "805e5f36294dd0e672174211a0a98de46266eb0d",
+            "path": "/"
+          },
+          "engines": {
+            "dsh": ">=0.2.2-rc.1"
+          }
+        }
+      ]
+    }
+  ]
+}
