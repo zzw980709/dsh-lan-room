@@ -1,0 +1,58 @@
+{
+  "name": "dsh-lan-room",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "LAN rooms for DeepSeek Harness: host a room on your network, let peers join with a one-time invite code, and have their agents ask each other questions.",
+  "exports": {
+    ".": "./boot.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "boot.js",
+    "index.js",
+    "client.js",
+    "lib",
+    "cordis.patch.yml",
+    "locale",
+    "icon.svg"
+  ],
+  "icon": "./icon.svg",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "license": "MIT",
+  "author": "zhengzhiwei",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zzw980709/dsh-lan-room.git"
+  },
+  "homepage": "https://github.com/zzw980709/dsh-lan-room#readme",
+  "bugs": {
+    "url": "https://github.com/zzw980709/dsh-lan-room/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "lan",
+    "agent",
+    "multi-agent",
+    "local-network",
+    "room"
+  ],
+  "engines": {
+    "dsh": ">=0.2.2-rc.1"
+  }
+}

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>dsh-lan-room · 交互图</title>
+<style>
+  :root{
+    --ink:#1b1c1f; --ink2:#5d626b; --ink3:#9a9da4;
+    --brand:#4d6bfe; --line:#d8dbe2; --panel:#ffffff; --bg:#eceef1;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",Arial,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  .page{width:1240px;padding:36px 0 40px}
+  .ttl{font-size:19px;font-weight:650;letter-spacing:.2px;margin:0 0 6px 60px}
+  .sub{font-size:12px;color:var(--ink2);margin:0 0 22px 60px}
+  .panel{width:1120px;margin:0 auto 26px;background:var(--panel);border:1px solid #dcdee4;border-radius:16px;
+    box-shadow:0 8px 24px rgba(16,24,40,.07);padding:6px 0 0;overflow:hidden}
+  .states{width:1120px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+  .sm{background:var(--panel);border:1px solid #dcdee4;border-radius:14px;box-shadow:0 6px 18px rgba(16,24,40,.06);padding:14px 14px 8px}
+  .sm h3{font-size:12px;margin:0 0 2px 2px;font-weight:650}
+  .sm .sd{font-size:10.5px;color:var(--ink3);margin:0 0 6px 2px}
+  svg{display:block}
+</style>
+</head>
+<body>
+<div class="page">
+  <h2 class="ttl">交互图 · 局域网问答</h2>
+  <p class="sub">A 的 agent 调用 lan_ask → 加密帧到 B → B 用专用会话跑一次 turn → 答案回传 → 工具结果交还模型</p>
+
+  <div class="panel" id="seqPanel"></div>
+
+  <div class="states">
+    <div class="sm"><h3>房间 Room</h3><div class="sd">Host 生命周期</div><div id="smRoom"></div></div>
+    <div class="sm"><h3>成员 Guest</h3><div class="sd">连接状态与重连</div><div id="smGuest"></div></div>
+    <div class="sm"><h3>邀请码 Invite</h3><div class="sd">一次性状态机</div><div id="smInvite"></div></div>
+  </div>
+</div>
+
+<script>
+const S = (tag, attrs = {}, inner = '') => {
+  const a = Object.entries(attrs).map(([k, v]) => ` ${k}="${v}"`).join('');
+  return `<${tag}${a}>${inner}</${tag}>`;
+};
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/* ───────────── 时序图 ───────────── */
+const W = 1120, H = 640;
+const lanes = [
+  { x: 175, t: 'A 的 agent', s: '模型侧 · 工具调用', c: '#4d6bfe' },
+  { x: 445, t: 'A 插件 · Host', s: '房间服务 :8787', c: '#7c5cff' },
+  { x: 715, t: 'B 插件 · Guest', s: 'SSE 客户端', c: '#0f9d78' },
+  { x: 985, t: 'B 的 agent', s: '会话「联机 · zzw-mbp」', c: '#d97706' },
+];
+const TOP = 96, LIFELINE_END = 600;
+let out = S('rect', { x: 0, y: 0, width: W, height: H, fill: '#ffffff' });
+
+// 分栏标题
+lanes.forEach(l => {
+  out += S('rect', { x: l.x - 100, y: TOP - 46, width: 200, height: 52, rx: 11, fill: '#f7f8fa', stroke: '#e3e5ea' });
+  out += S('rect', { x: l.x - 100, y: TOP - 46, width: 3, height: 52, rx: 1.5, fill: l.c });
+  out += S('text', { x: l.x - 86, y: TOP - 26, 'font-size': 12.5, 'font-weight': 650, fill: '#1b1c1f' }, esc(l.t));
+  out += S('text', { x: l.x - 86, y: TOP - 10, 'font-size': 10.5, fill: '#8a8e96' }, esc(l.s));
+  out += S('line', { x1: l.x, y1: TOP + 8, x2: l.x, y2: LIFELINE_END, stroke: '#e1e3e9', 'stroke-dasharray': '3 5' });
+});
+
+const arrow = (from, to, y, label, opt = {}) => {
+  const x1 = lanes[from].x, x2 = lanes[to].x;
+  const dir = x2 > x1 ? 1 : -1;
+  const col = opt.color || '#3f4550';
+  const head = 8;
+  const xt = x2 - dir * 2;
+  let s = S('line', { x1, y1: y, x2: xt - dir * head, y2: y, stroke: col, 'stroke-width': opt.w || 1.4, 'stroke-dasharray': opt.dash ? '5 4' : 'none' });
+  s += S('path', { d: `M${xt},${y} L${xt - dir * head},${y - 4.2} L${xt - dir * head},${y + 4.2} Z`, fill: col });
+  s += S('circle', { cx: x1, cy: y, r: 3, fill: col });
+  const cx = (x1 + x2) / 2;
+  const tw = label.length * 6.6 + 16;
+  s += S('rect', { x: cx - tw / 2, y: y - 22, width: tw, height: 18, rx: 6, fill: '#fff', opacity: 0.96 });
+  s += S('text', { x: cx, y: y - 9, 'text-anchor': 'middle', 'font-size': 11.5, fill: col, 'font-family': opt.mono ? 'var(--mono)' : 'inherit' }, esc(label));
+  return s;
+};
+const note = (laneIdx, y, lines, w = 268) => {
+  const x = lanes[laneIdx].x - w / 2;
+  let s = S('rect', { x, y, width: w, height: 22 + (lines.length - 1) * 16, rx: 8, fill: '#fffaf0', stroke: '#f0d9ae' });
+  lines.forEach((t, i) => {
+    s += S('text', { x: x + 12, y: y + 18 + i * 16, 'font-size': 11, fill: '#8a6314' }, esc(t));
+  });
+  return s;
+};
+const phase = (label, y1, y2) => {
+  let s = S('line', { x1: 44, y1, x2: 44, y2, stroke: '#cfd3db', 'stroke-width': 2, 'stroke-linecap': 'round' });
+  s += S('text', { x: 38, y: y1, 'text-anchor': 'end', 'font-size': 10.5, fill: '#9a9da4', 'font-weight': 600 }, esc(label));
+  return s;
+};
+
+out += phase('发起', 150, 250);
+out += phase('执行', 300, 470);
+out += phase('回传', 510, 590);
+
+out += arrow(0, 1, 170, 'lan_ask(peer:"zzw-air", q, 300s)');
+out += arrow(1, 2, 220, 'ask #a_7c · AES-GCM 帧');
+out += arrow(2, 3, 300, 'prompt(包装后 · queue)');
+out += note(3, 330, ['专用预设 lan-room-guest', '只读工具 · read-only · 审批 never', '远端内容标记为不可信输入']);
+out += arrow(3, 2, 448, 'assistant 文本 · turn/end', { color: '#b45309' });
+out += arrow(2, 1, 505, 'answer #a_7c · ok · 12.4s', { color: '#0f766e' });
+out += arrow(1, 0, 565, '工具结果 {status:"ok", text, meta}', { color: '#4338ca' });
+
+// 超时/迟到 注记
+out += S('rect', { x: 585, y: 606, width: 500, height: 26, rx: 8, fill: '#fff4f4', stroke: '#f3c9c9' });
+out += S('text', { x: 600, y: 623, 'font-size': 11, fill: '#a12626' }, '超时 300s → status:"timeout"；B 之后跑完仍补发 answer（late:true），A 侧追加「迟到回答」');
+document.getElementById('seqPanel').innerHTML =
+  `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${out}</svg>`;
+
+/* ───────────── 状态机 ───────────── */
+const node = (x, y, label, color = '#5d626b', bg = '#f7f8fa') =>
+  S('rect', { x: x - 46, y: y - 15, width: 92, height: 30, rx: 8, fill: bg, stroke: '#e0e3e9' }) +
+  S('text', { x, y: y + 4, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 600, fill: color }, esc(label));
+const link = (x1, y1, x2, y2, label) => {
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+  const ux = dx / len, uy = dy / len;
+  const sx = x1 + ux * 50, sy = y1 + uy * 19, ex = x2 - ux * 52, ey = y2 - uy * 19;
+  let s = S('line', { x1: sx, y1: sy, x2: ex, y2: ey, stroke: '#c3c7d0', 'stroke-width': 1.3 });
+  s += S('path', { d: `M${ex},${ey} L${ex - ux * 7 - uy * 4},${ey - uy * 7 + ux * 4} L${ex - ux * 7 + uy * 4},${ey - uy * 7 - ux * 4} Z`, fill: '#c3c7d0' });
+  if (label) {
+    s += S('text', { x: (sx + ex) / 2, y: (sy + ey) / 2 - 6, 'text-anchor': 'middle', 'font-size': 9.5, fill: '#9a9da4' }, esc(label));
+  }
+  return s;
+};
+
+const sm = (el, svg) => { document.getElementById(el).innerHTML = `<svg viewBox="0 0 340 168" width="340" height="168">${svg}</svg>`; };
+
+sm('smRoom',
+  node(70, 44, 'idle') + node(170, 44, 'hosting', '#4d6bfe', '#eef1ff') + node(282, 44, 'closed') +
+  link(70, 44, 170, 44, 'create') + link(170, 44, 282, 44, 'close/ttl') +
+  S('text', { x: 170, y: 118, 'text-anchor': 'middle', 'font-size': 10, fill: '#9a9da4' }, '监听 :8787 · 广播 room-closed'));
+
+sm('smGuest',
+  node(56, 40, 'idle') + node(160, 40, 'connecting', '#4d6bfe', '#eef1ff') + node(264, 40, 'joined', '#0f9d78', '#e9f7ee') +
+  link(56, 40, 160, 40, 'join') + link(160, 40, 264, 40, 'ok') +
+  node(264, 112, 'reconnecting', '#b45309', '#fef4e6') + node(140, 112, 'disconnected', '#b91c1c', '#fdecec') +
+  link(264, 40, 264, 112, 'drop / resume') + link(264, 112, 140, 112, '5×'));
+
+sm('smInvite',
+  node(66, 84, 'issued', '#4d6bfe', '#eef1ff') +
+  node(250, 34, 'used', '#0f9d78', '#e9f7ee') +
+  node(250, 84, 'expired', '#9a9da4') +
+  node(250, 134, 'revoked', '#9a9da4') +
+  link(66, 84, 250, 34, 'consume') + link(66, 84, 250, 84, 'ttl') + link(66, 84, 250, 134, 'revoke'));
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+- insert:
+    - id: lan-room
+      name: 'dsh-lan-room'
+      config: {}
